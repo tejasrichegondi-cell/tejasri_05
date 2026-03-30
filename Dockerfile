@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
 # Install system dependencies
-# Changed 'libgl1-mesa-glx' to 'libgl1' for compatibility
+# Note: libgl1-mesa-glx is replaced by libgl1 for modern compatibility
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
     libtesseract-dev \
@@ -35,7 +35,7 @@ COPY . /app/
 # Collect static files
 RUN python manage.py collectstatic --noinput
 
-# Expose port (matches Railway manual setting)
+# Expose port (Railway usually uses 8080 or the $PORT env var)
 EXPOSE 8080
 
 # Start Gunicorn
