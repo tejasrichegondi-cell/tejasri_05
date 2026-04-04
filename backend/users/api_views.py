@@ -26,7 +26,8 @@ BASE_DIR = settings.BASE_DIR
 word2vec_model = None
 lstm_model = None
 
-from tensorflow.keras.layers import InputLayer
+from tensorflow.keras.layers import InputLayer, Dense
+
 class PatchedInputLayer(InputLayer):
     def __init__(self, *args, **kwargs):
         # Strip Keras 3 specific arguments that cause errors on older versions
@@ -35,6 +36,12 @@ class PatchedInputLayer(InputLayer):
         kwargs.pop('optional', None)
         if batch_shape is not None and 'shape' not in kwargs:
             kwargs['shape'] = tuple(batch_shape[1:])
+        super().__init__(*args, **kwargs)
+
+class PatchedDense(Dense):
+    def __init__(self, *args, **kwargs):
+        # Strip quantization_config which causes errors during deserialization in some Keras/TF versions
+        kwargs.pop('quantization_config', None)
         super().__init__(*args, **kwargs)
 
 def get_models():
@@ -47,7 +54,7 @@ def get_models():
     if lstm_model is None:
         lstm_model = load_model(
             os.path.join(BASE_DIR, "final_lstm.h5"),
-            custom_objects={'InputLayer': PatchedInputLayer},
+            custom_objects={'InputLayer': PatchedInputLayer, 'Dense': PatchedDense},
             compile=False
         )
     return word2vec_model, lstm_model
