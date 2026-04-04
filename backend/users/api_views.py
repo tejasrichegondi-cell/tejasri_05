@@ -26,6 +26,17 @@ BASE_DIR = settings.BASE_DIR
 word2vec_model = None
 lstm_model = None
 
+from tensorflow.keras.layers import InputLayer
+class PatchedInputLayer(InputLayer):
+    def __init__(self, *args, **kwargs):
+        # Strip Keras 3 specific arguments that cause errors on older versions
+        # And convert batch_shape to shape for Keras 3
+        batch_shape = kwargs.pop('batch_shape', None)
+        kwargs.pop('optional', None)
+        if batch_shape is not None and 'shape' not in kwargs:
+            kwargs['shape'] = tuple(batch_shape[1:])
+        super().__init__(*args, **kwargs)
+
 def get_models():
     global word2vec_model, lstm_model
     if word2vec_model is None:
@@ -36,6 +47,7 @@ def get_models():
     if lstm_model is None:
         lstm_model = load_model(
             os.path.join(BASE_DIR, "final_lstm.h5"),
+            custom_objects={'InputLayer': PatchedInputLayer},
             compile=False
         )
     return word2vec_model, lstm_model
@@ -123,6 +135,8 @@ class PredictionAPIView(APIView):
             }, status=status.HTTP_200_OK)
             
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return Response({"error": f"Prediction error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class DatasetAPIView(APIView):
@@ -140,8 +154,8 @@ class DatasetAPIView(APIView):
 class AdminLoginAPIView(APIView):
     def post(self, request):
         try:
-            loginid = request.data.get('loginid')
-            pswd = request.data.get('pswd')
+            loginid = request.data.get('loginid', '').lower()
+            pswd = request.data.get('pswd', '').lower()
             if loginid == 'admin' and pswd == 'admin':
                 return Response({"id": "admin", "name": "Administrator", "role": "admin"}, status=status.HTTP_200_OK)
             return Response({"error": "Invalid Admin Credentials"}, status=status.HTTP_401_UNAUTHORIZED)

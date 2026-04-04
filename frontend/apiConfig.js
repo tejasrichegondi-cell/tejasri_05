@@ -12,15 +12,13 @@ import { Platform } from 'react-native';
 const PRODUCTION_URL = "https://englishessay-production.up.railway.app";
 
 // YOUR CURRENT LOCAL IP (found via ipconfig)
-const LOCAL_IP = "192.168.137.235"; 
+const LOCAL_IP = "192.168.137.135";
 
-// EXPORT PRODUCTION URL FOR DEPLOYMENT (use this for pushing to GitHub/Railway)
-export const BACKEND_URL = PRODUCTION_URL;
-
-// Optional: Platform-specific config (use LOCAL_IP for local testing)
-/*
+// LOCAL TESTING - Un-comment this out when using Railway
 export const BACKEND_URL = Platform.select({
   web: "http://localhost:8000",
   default: `http://${LOCAL_IP}:8000`
 });
-*/
+
+// PRODUCTION - This line is now active
+// export const BACKEND_URL = PRODUCTION_URL;

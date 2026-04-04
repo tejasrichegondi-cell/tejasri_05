@@ -26,7 +26,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-!!t7r_3hu(9m7sp6@(f5i
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['englishessay-production.up.railway.app', '.railway.app', 'localhost', '127.0.0.1', '*']
+ALLOWED_HOSTS = ['*']
 
 # Essential for HTTPS detection behind a proxy like Railway
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -154,6 +154,10 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.railway.app',
     'http://localhost:8081',
     'http://localhost:19006',
+    'http://localhost:6061',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://localhost:3000',
 ]
 
 # Using default CORS headers list for maximum compatibility
