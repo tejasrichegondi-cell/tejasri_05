@@ -20,9 +20,16 @@
                     {% if extracted_text %}
                     <h4 style="margin-top: 20px; color:#333;">Extracted Text from Image:</h4>
                     <div
-                        style="border: 1px solid #ccc; padding: 15px; margin: 20px auto; width: 100%; text-align: left; background-color: #f9f9f9; border-radius: 5px; color: #333;">
+                        style="border: 1px solid #ccc; padding: 15px; margin: 10px auto; width: 100%; text-align: left; background-color: #f9f9f9; border-radius: 5px; color: #333;">
                         {{ extracted_text|linebreaks }}
                     </div>
+                    {% if word_stats %}
+                    <p style="color: #555;">
+                        <b>Word Recognition Stats:</b> {{ word_stats.recognized }} / {{ word_stats.total }} words found in model.<br>
+                        <b>Raw Model Output (Score):</b> {{ word_stats.raw_score }}<br>
+                        <b>Samples Found:</b> {{ word_stats.first_few_found }}...
+                    </p>
+                    {% endif %}
                     {% endif %}
 
                     <form action="{% url 'prediction' %}" method="post" enctype="multipart/form-data">

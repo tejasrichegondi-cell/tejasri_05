@@ -6,7 +6,7 @@ from .serializers import UserRegistrationSerializer, UserLoginSerializer
 import os
 import re
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps, ImageFilter
 import pytesseract
 from django.conf import settings
 from gensim.models import KeyedVectors
@@ -26,23 +26,40 @@ BASE_DIR = settings.BASE_DIR
 word2vec_model = None
 lstm_model = None
 
-from tensorflow.keras.layers import InputLayer, Dense
+from tensorflow.keras.layers import InputLayer, Dense, LSTM, Dropout
+
+class PatchedDTypePolicy:
+    @classmethod
+    def from_config(cls, config):
+        return config.get('name', 'float32')
+
+def patch_kwargs(kwargs):
+    # Rename batch_shape to batch_input_shape for Keras 2
+    if 'batch_shape' in kwargs:
+        kwargs['batch_input_shape'] = kwargs.pop('batch_shape')
+    kwargs.pop('optional', None)
+    kwargs.pop('quantization_config', None)
+    # Handle DTypePolicy dictionary
+    dtype = kwargs.get('dtype')
+    if isinstance(dtype, dict) and dtype.get('class_name') == 'DTypePolicy':
+        kwargs['dtype'] = dtype.get('config', {}).get('name', 'float32')
+    return kwargs
 
 class PatchedInputLayer(InputLayer):
     def __init__(self, *args, **kwargs):
-        # Strip Keras 3 specific arguments that cause errors on older versions
-        # And convert batch_shape to shape for Keras 3
-        batch_shape = kwargs.pop('batch_shape', None)
-        kwargs.pop('optional', None)
-        if batch_shape is not None and 'shape' not in kwargs:
-            kwargs['shape'] = tuple(batch_shape[1:])
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **patch_kwargs(kwargs))
 
 class PatchedDense(Dense):
     def __init__(self, *args, **kwargs):
-        # Strip quantization_config which causes errors during deserialization in some Keras/TF versions
-        kwargs.pop('quantization_config', None)
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **patch_kwargs(kwargs))
+
+class PatchedLSTM(LSTM):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **patch_kwargs(kwargs))
+
+class PatchedDropout(Dropout):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **patch_kwargs(kwargs))
 
 def get_models():
     global word2vec_model, lstm_model
@@ -54,7 +71,13 @@ def get_models():
     if lstm_model is None:
         lstm_model = load_model(
             os.path.join(BASE_DIR, "final_lstm.h5"),
-            custom_objects={'InputLayer': PatchedInputLayer, 'Dense': PatchedDense},
+            custom_objects={
+                'InputLayer': PatchedInputLayer, 
+                'Dense': PatchedDense,
+                'LSTM': PatchedLSTM,
+                'Dropout': PatchedDropout,
+                'DTypePolicy': PatchedDTypePolicy
+            },
             compile=False
         )
     return word2vec_model, lstm_model
@@ -107,7 +130,13 @@ class PredictionAPIView(APIView):
         if image_file:
             try:
                 img = Image.open(image_file)
-                final_text = pytesseract.image_to_string(img)
+                
+                # Image Preprocessing for better OCR
+                img = img.convert('L') # Grayscale
+                img = ImageOps.autocontrast(img)
+                img = img.filter(ImageFilter.SHARPEN)
+                
+                final_text = pytesseract.image_to_string(img, config='--psm 3')
             except Exception as e:
                 return Response({"error": f"Image processing error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 

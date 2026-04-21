@@ -278,11 +278,45 @@ from django.shortcuts import render
 from nltk.corpus import stopwords
 from gensim.models import KeyedVectors
 from tensorflow.keras.models import load_model
-from PIL import Image
+from PIL import Image, ImageOps, ImageFilter
 import pytesseract
 import numpy as np
 import re
 import os
+from tensorflow.keras.layers import InputLayer, Dense, LSTM, Dropout
+
+class PatchedDTypePolicy:
+    @classmethod
+    def from_config(cls, config):
+        return config.get('name', 'float32')
+
+def patch_kwargs(kwargs):
+    # Rename batch_shape to batch_input_shape for Keras 2
+    if 'batch_shape' in kwargs:
+        kwargs['batch_input_shape'] = kwargs.pop('batch_shape')
+    kwargs.pop('optional', None)
+    kwargs.pop('quantization_config', None)
+    # Handle DTypePolicy dictionary
+    dtype = kwargs.get('dtype')
+    if isinstance(dtype, dict) and dtype.get('class_name') == 'DTypePolicy':
+        kwargs['dtype'] = dtype.get('config', {}).get('name', 'float32')
+    return kwargs
+
+class PatchedInputLayer(InputLayer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **patch_kwargs(kwargs))
+
+class PatchedDense(Dense):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **patch_kwargs(kwargs))
+
+class PatchedLSTM(LSTM):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **patch_kwargs(kwargs))
+
+class PatchedDropout(Dropout):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **patch_kwargs(kwargs))
 
 # =========================
 # OCR PATH (Windows Only)
@@ -322,6 +356,13 @@ def get_prediction_models():
     if _lstm_model is None:
         _lstm_model = load_model(
             os.path.join(BASE_DIR, "final_lstm.h5"),
+            custom_objects={
+                'InputLayer': PatchedInputLayer, 
+                'Dense': PatchedDense,
+                'LSTM': PatchedLSTM,
+                'Dropout': PatchedDropout,
+                'DTypePolicy': PatchedDTypePolicy
+            },
             compile=False
         )
     return _word2vec_model, _lstm_model
@@ -346,7 +387,17 @@ def prediction(request):
         if image_file:
             try:
                 img = Image.open(image_file)
-                final_text = pytesseract.image_to_string(img)
+                
+                # Image Preprocessing for better OCR
+                img = img.convert('L') # Grayscale
+                img = ImageOps.autocontrast(img) # Improve contrast
+                img = img.filter(ImageFilter.SHARPEN) # Sharpen text
+                
+                final_text = pytesseract.image_to_string(img, config='--psm 3')
+                
+                # Additional Cleaning for OCR noise
+                final_text = re.sub(r'[^\x00-\x7f]', ' ', final_text) # Remove non-ASCII
+                final_text = ' '.join(final_text.split()) # Normalize whitespace
             except Exception as e:
                 return render(
                     request,
@@ -372,25 +423,35 @@ def prediction(request):
             words = text.lower().split()
             words = [w for w in words if w not in stop_words]
 
+            total_words = len(words)
             vec = np.zeros((300,), dtype="float32")
             count = 0
+            found_words = []
 
             w2v, lstm = get_prediction_models()
             for w in words:
                 if w in w2v.key_to_index:
                     vec += w2v[w]
                     count += 1
+                    found_words.append(w)
 
-            if count == 0:
-                score = "No valid words found."
+            if total_words == 0:
+                score = "No words detected after filtering stop words."
+            elif count == 0:
+                score = "No valid words found (Recognized: 0 / Total: " + str(total_words) + ")."
             else:
                 vec /= count
                 vec = vec.reshape(1, 1, 300)
 
                 preds = lstm.predict(vec, verbose=0)
-                score = str(round(float(preds[0][0])))
+                raw_score = float(preds[0][0])
+                score = str(round(raw_score))
+                # Add word counts and raw score for debugging
+                score += f" (Raw: {raw_score:.2f}, Recognized: {count}/{total_words})"
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             score = "Error: " + str(e)
 
         return render(
@@ -398,7 +459,13 @@ def prediction(request):
             "users/predictForm.html",
             {
                 "score": score,
-                "extracted_text": final_text if image_file else None
+                "extracted_text": final_text if image_file else None,
+                "word_stats": {
+                    "recognized": count,
+                    "total": total_words,
+                    "raw_score": round(raw_score, 4) if 'raw_score' in locals() else None,
+                    "first_few_found": ", ".join(found_words[:10])
+                }
             }
         )
 
