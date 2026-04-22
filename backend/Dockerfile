@@ -2,6 +2,7 @@ FROM python:3.9-slim-bullseye
 
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
+ENV TF_ENABLE_ONEDNN_OPTS=0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
@@ -32,4 +33,4 @@ RUN python manage.py collectstatic --noinput
 
 EXPOSE 8080
 
-CMD python manage.py migrate --noinput && gunicorn --bind 0.0.0.0:${PORT:-8080} --timeout 120 --workers 2 Automatic_English_Essay_Scoring_Algorithm_Based_On_Ml.wsgi:application
+CMD python manage.py migrate --noinput && gunicorn --bind 0.0.0.0:${PORT:-8080} --timeout 120 --workers 1 Automatic_English_Essay_Scoring_Algorithm_Based_On_Ml.wsgi:application
