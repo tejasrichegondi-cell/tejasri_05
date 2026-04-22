@@ -8,17 +8,19 @@ import { Platform } from 'react-native';
  * 3. PRODUCTION: Use your Railway URL (e.g., 'https://englishessay-production.up.railway.app')
  */
 
-// CHANGE THIS TO YOUR RAILWAY URL FOR PRODUCTION
-const PRODUCTION_URL = "https://englishessay-production-234d.up.railway.app";
+const PRODUCTION_URL = "https://englishessay-production-6ce5.up.railway.app";
 
 // YOUR CURRENT LOCAL IP (found via ipconfig)
 const LOCAL_IP = "192.168.137.135";
 
-// PRODUCTION - Comment this out when testing locally
-// export const BACKEND_URL = PRODUCTION_URL;
+// PRODUCTION - Using the Railway link as requested
+export const BACKEND_URL = PRODUCTION_URL;
 
-// LOCAL TESTING - Use this to connect to your local Django server
+/* 
+// LOCAL TESTING - Use this if you want to switch back to local testing
 export const BACKEND_URL = Platform.select({
   web: "http://localhost:8000",
   default: `http://${LOCAL_IP}:8000`
 });
+*/
+
