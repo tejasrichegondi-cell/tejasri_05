@@ -4,7 +4,8 @@ __pycache__
 *.pyc
 db.sqlite3
 media/
-static/
+# static/
+
 .env
 v機能env/
 venv/
