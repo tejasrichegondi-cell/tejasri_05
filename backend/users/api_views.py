@@ -39,6 +39,8 @@ def patch_kwargs(kwargs):
         kwargs['batch_input_shape'] = kwargs.pop('batch_shape')
     kwargs.pop('optional', None)
     kwargs.pop('quantization_config', None)
+    kwargs.pop('time_major', None)
+    kwargs.pop('use_bias', None) # Sometimes causes issues in mixed versions
     # Handle DTypePolicy dictionary
     dtype = kwargs.get('dtype')
     if isinstance(dtype, dict) and dtype.get('class_name') == 'DTypePolicy':
@@ -55,6 +57,9 @@ class PatchedDense(Dense):
 
 class PatchedLSTM(LSTM):
     def __init__(self, *args, **kwargs):
+        # Explicitly handle and remove problematic arguments before super().__init__
+        kwargs.pop('time_major', None)
+        kwargs.pop('use_bias', None)
         super().__init__(*args, **patch_kwargs(kwargs))
 
 class PatchedDropout(Dropout):
@@ -177,7 +182,9 @@ class PredictionAPIView(APIView):
             
             try:
                 preds = lstm.predict(vec, verbose=0)
-                score = round(float(preds[0][0]))
+                raw_score = float(preds[0][0])
+                # Force score to be between 1 and 10
+                score = int(max(1, min(10, round(raw_score))))
             except Exception as predict_err:
                 return Response({"error": f"LSTM Prediction Error: {str(predict_err)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             

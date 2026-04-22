@@ -296,6 +296,8 @@ def patch_kwargs(kwargs):
         kwargs['batch_input_shape'] = kwargs.pop('batch_shape')
     kwargs.pop('optional', None)
     kwargs.pop('quantization_config', None)
+    kwargs.pop('time_major', None)
+    kwargs.pop('use_bias', None)
     # Handle DTypePolicy dictionary
     dtype = kwargs.get('dtype')
     if isinstance(dtype, dict) and dtype.get('class_name') == 'DTypePolicy':
@@ -312,6 +314,8 @@ class PatchedDense(Dense):
 
 class PatchedLSTM(LSTM):
     def __init__(self, *args, **kwargs):
+        kwargs.pop('time_major', None)
+        kwargs.pop('use_bias', None)
         super().__init__(*args, **patch_kwargs(kwargs))
 
 class PatchedDropout(Dropout):
@@ -445,7 +449,9 @@ def prediction(request):
 
                 preds = lstm.predict(vec, verbose=0)
                 raw_score = float(preds[0][0])
-                score = str(round(raw_score))
+                # Force score to be between 1 and 10
+                final_score = int(max(1, min(10, round(raw_score))))
+                score = str(final_score)
                 # Add word counts and raw score for debugging
                 score += f" (Raw: {raw_score:.2f}, Recognized: {count}/{total_words})"
 
