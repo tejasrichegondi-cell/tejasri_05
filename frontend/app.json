@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "mobile_app_v54",
-    "slug": "mobile_app_v54",
+    "name": "English Essay Score",
+    "slug": "english_essay_score",
     "sdkVersion": "54.0.0",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -22,14 +22,15 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "com.tejasrii.mobile_app_v54"
+      "package": "com.tejasrii.english_essay_score"
+
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "extra": {
       "eas": {
-        "projectId": "8137b992-68de-4e5a-a6ac-c78b8fb5ddd1"
+        "projectId": "7d584d51-74e0-4574-8aca-8f163aa322c6"
       }
     }
   }

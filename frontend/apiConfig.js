@@ -8,7 +8,7 @@ import { Platform } from 'react-native';
  * 3. PRODUCTION: Use your Railway URL (e.g., 'https://englishessay-production.up.railway.app')
  */
 
-const PRODUCTION_URL = "https://englishessay-production-6ce5.up.railway.app";
+const PRODUCTION_URL = "https://tejasri05-production.up.railway.app";
 
 // YOUR CURRENT LOCAL IP (found via ipconfig)
 const LOCAL_IP = "192.168.137.135";
